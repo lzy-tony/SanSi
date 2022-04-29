@@ -1,5 +1,7 @@
 #include "sansi.h"
 
+#include <iostream>
+
 const int Round = 24;
 
 const uint64_t XorMasks[Round] =
@@ -63,14 +65,14 @@ void HashTensor::set_hash(uint64_t _pos, uint64_t val) {
     m_hash[_pos] = val;
 }
 
-void HashTensor::embed(const uint64_t *data) {
+void HashTensor::embed(uint64_t *data) {
     for(int i = 0; i < BlockSize; i++) {
         m_hash[i] ^= data[i];
     }
 }
 
 uint64_t HashTensor::get_mask() {
-    uint64_t mask = (1 << 8) - 1;
+    uint64_t mask = (1 << 4) - 1;
     return m_hash[0] & mask;
 }
 
@@ -146,12 +148,20 @@ void HashTensor::f_function() {
     }
 }
 
+Sansi::Sansi() {
+    cnt = 0;
+    while(!q.empty()) {
+        q.pop();
+    }
+}
+
 void Sansi::reset() {
+    cnt = 0;
     while(!q.empty())
         q.pop();
 }
 
-void Sansi::add_block(const uint64_t *data) { //assume block is 1024 bits long
+void Sansi::add_block(uint64_t *data) { //assume block is 1024 bits long
     // process block
     cnt++;
     HashTensor hashTensor;
@@ -183,9 +193,10 @@ std::string Sansi::hash() {
     }
     std::string result;
     HashTensor hashTensor = q.top();
-    for(int i = 0; i < 10; i++) {
+    for(int i = 0; i < 20; i++) {
+        std::cerr << hashTensor.get_mask() << " ";
         result += dec2hex[hashTensor.get_mask()];
-        hashTensor.f_function();        
+        hashTensor.f_function();
     }
     return result;
 }

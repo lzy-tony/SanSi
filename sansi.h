@@ -8,6 +8,7 @@ typedef unsigned long uint64_t;
 
 const int StateSize = 1600 / (8 * 8);
 const int BlockSize = 1024 / (8 * 8);
+const int BlockCharSize = BlockSize * 8;
 
 class HashTensor {
 private:
@@ -16,15 +17,16 @@ private:
 public:
     uint64_t h_index;
 
-    inline void reset();
-    inline void set_ones(uint64_t _pos);
-    inline void set_zeros(uint64_t _pos);
-    inline void set_pos(uint64_t _pos);
-    inline void set_hash(uint64_t _pos, uint64_t val);
-    inline void calc_index();
-    inline void f_function();
-    inline void embed(const uint64_t *data);
-    inline uint64_t get_mask();
+    HashTensor();
+    void reset();
+    void set_ones(uint64_t _pos);
+    void set_zeros(uint64_t _pos);
+    void set_pos(uint64_t _pos);
+    void set_hash(uint64_t _pos, uint64_t val);
+    void calc_index();
+    void f_function();
+    void embed(uint64_t *data);
+    uint64_t get_mask();
 
     bool operator < (const HashTensor &t) const {
         return h_index < t.h_index;
@@ -48,7 +50,7 @@ private:
 public:
     Sansi();
     void reset();
-    void add_block(const uint64_t *data);
+    void add_block(uint64_t *data);
     HashTensor merge2();
     std::string hash();
 };
