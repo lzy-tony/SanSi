@@ -1,5 +1,5 @@
 # SanSi
-A novel cryptographic hash function, project for Modern Cryptography, 2022 Sprint THUCST.
+A novel cryptographic hash function, project for Modern Cryptography, 2022 Spring THUCST.
 
 SanSi（三思）是一个基于类 sponge 结构的哈希密码。三可以意味着每一轮都有三个张量进行决策，也可以意味着改编自 SHA3（大雾）。
 
