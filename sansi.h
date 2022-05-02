@@ -4,7 +4,7 @@
 #include <queue>
 #include <string>
 
-typedef unsigned long uint64_t;
+// typedef unsigned long uint64_t;
 
 const int StateSize = 1600 / (8 * 8);
 const int BlockSize = 1024 / (8 * 8);
@@ -51,7 +51,7 @@ public:
     Sansi();
     void reset();
     void add_block(uint64_t *data);
-    HashTensor merge2();
+    void merge2();
     std::string hash();
 };
 

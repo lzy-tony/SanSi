@@ -175,7 +175,7 @@ void Sansi::add_block(uint64_t *data) { //assume block is 1024 bits long
     }
 }
 
-HashTensor Sansi::merge2() {
+void Sansi::merge2() {
     HashTensor tensor1 = q.top();
     q.pop();
     HashTensor tensor2 = q.top();
