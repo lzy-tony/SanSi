@@ -19,6 +19,6 @@ int main(int argc, char **argv) {
         for(int i = 0; i < (len >> 8); i += BlockSize) {
             crypto.add_block(hash_buffer + i);
         }
-        out << crypto.hash();
+        out << crypto.hash() << std::endl;
     }
 }
