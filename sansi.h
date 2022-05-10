@@ -26,6 +26,7 @@ public:
     void calc_index();
     void f_function();
     void embed(uint64_t *data);
+    void print();
     uint64_t get_mask();
 
     bool operator < (const HashTensor &t) const {

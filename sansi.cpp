@@ -81,6 +81,14 @@ uint64_t HashTensor::get_mask() {
     return m_hash[0] & mask;
 }
 
+void HashTensor::print() {
+    std::cerr << "printing tensor" << std::endl;
+    for(int i = 0; i < StateSize; ++i) {
+        std::cerr << m_hash[i] << std::endl;
+    }
+    std::cerr << "end print" << std::endl;
+}
+
 unsigned int mod5(uint64_t x) {
     return x % 5;
 }
@@ -91,8 +99,8 @@ unsigned int mod64(uint64_t x) {
 
 void HashTensor::f_function() {
     // re-compute state
-    uint64_t grid[(local_x + 2 * halosize) * (local_y + 2 * halosize) * (local_z + 2 * halosize)];
-    uint64_t aux[(local_x + 2 * halosize) * (local_y + 2 * halosize) * (local_z + 2 * halosize)];
+    static uint64_t grid[(local_x + 2 * halosize) * (local_y + 2 * halosize) * (local_z + 2 * halosize)];
+    static uint64_t aux[(local_x + 2 * halosize) * (local_y + 2 * halosize) * (local_z + 2 * halosize)];
     std::memset(grid, 0, sizeof(grid));
     std::memset(aux, 0, sizeof(aux));
     uint64_t *buffer[2] = {grid, aux};
@@ -109,13 +117,12 @@ void HashTensor::f_function() {
         // decompose uint64_t to four 16 bit
         for(int i = 0; i < local_x; i++) {
             for(int j = 0; j < local_y; j++) {
-                buffer[0][index(i, j, halosize, ldy, ldz)] = (m_hash[i * local_x + j] & mask16);
-                buffer[0][index(i, j, halosize + 1, ldy, ldz)] = ((m_hash[i * local_x + j] >> 16) & mask16);
-                buffer[0][index(i, j, halosize + 2, ldy, ldz)] = ((m_hash[i * local_x + j] >> 32) & mask16);
-                buffer[0][index(i, j, halosize + 3, ldy, ldz)] = ((m_hash[i * local_x + j] >> 48) & mask16);
+                buffer[0][index(i + x_start, j + y_start, halosize + 3, ldy, ldz)] = (m_hash[i * local_x + j] & mask16);
+                buffer[0][index(i + x_start, j + y_start, halosize + 2, ldy, ldz)] = ((m_hash[i * local_x + j] >> 16) & mask16);
+                buffer[0][index(i + x_start, j + y_start, halosize + 1, ldy, ldz)] = ((m_hash[i * local_x + j] >> 32) & mask16);
+                buffer[0][index(i + x_start, j + y_start, halosize, ldy, ldz)] = ((m_hash[i * local_x + j] >> 48) & mask16);
             }
         }
-        // 7 point stencil, calculate checksum
         uint64_t *a0, *a1;
         for(int t = 0; t < nt; ++t) {
             a0 = buffer[t % 2], a1 = buffer[(t + 1) % 2];
@@ -141,11 +148,11 @@ void HashTensor::f_function() {
         // write back
         for(int i = 0; i < local_x; i++) {
             for(int j = 0; j < local_y; j++) {
-                int idx = i * local_x + j;
-                m_hash[idx] = a1[index(i, j, halosize + 3, ldy, ldz)], m_hash[idx] <<= 16;
-                m_hash[idx] = a1[index(i, j, halosize + 2, ldy, ldz)], m_hash[idx] <<= 16;
-                m_hash[idx] = a1[index(i, j, halosize + 1, ldy, ldz)], m_hash[idx] <<= 16;
-                m_hash[idx] = a1[index(i, j, halosize, ldy, ldz)];
+                int idx = i * local_y + j;
+                m_hash[idx] = a1[index(i + x_start, j + y_start, halosize + 3, ldy, ldz)], m_hash[idx] <<= 16;
+                m_hash[idx] |= a1[index(i + x_start, j + y_start, halosize + 2, ldy, ldz)], m_hash[idx] <<= 16;
+                m_hash[idx] |= a1[index(i + x_start, j + y_start, halosize + 1, ldy, ldz)], m_hash[idx] <<= 16;
+                m_hash[idx] |= a1[index(i + x_start, j + y_start, halosize, ldy, ldz)];
             }
         }
 
@@ -221,6 +228,8 @@ void Sansi::add_block(uint64_t *data) { //assume block is 1024 bits long
     HashTensor hashTensor;
     (cnt & 1) ? hashTensor.set_zeros(cnt) : hashTensor.set_ones(cnt);
     hashTensor.embed(data);
+    hashTensor.f_function();
+    hashTensor.calc_index();
 
     // update using existing three blocks 
     q.push(hashTensor);
@@ -252,7 +261,6 @@ std::string Sansi::hash() {
     std::string result;
     HashTensor hashTensor = q.top();
     for(int i = 0; i < 20; i++) {
-        // std::cerr << hashTensor.get_mask() << " ";
         result += dec2hex[hashTensor.get_mask()];
         hashTensor.f_function();
     }
