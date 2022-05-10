@@ -8,11 +8,14 @@ const int halosize = 1;
 const int local_x = 5;
 const int local_y = 5;
 const int local_z = 4;
+const int block_group = 8;
 
 const uint64_t XorMasks[Round] =
 {
     0xd76aa478e8c7b756ULL, 0x242070dbc1bdceeeULL
 };
+
+const uint64_t bias = 0x0000000000000fafULL;
 
 inline uint64_t rotateLeft(uint64_t x, uint8_t numBits) {
     return (x << numBits) | (x >> (64 - numBits));
@@ -88,18 +91,18 @@ unsigned int mod64(uint64_t x) {
 
 void HashTensor::f_function() {
     // re-compute state
-    uint32_t grid[(local_x + 2 * halosize) * (local_y + 2 * halosize) * (local_z + 2 * halosize)];
-    uint32_t aux[(local_x + 2 * halosize) * (local_y + 2 * halosize) * (local_z + 2 * halosize)];
+    uint64_t grid[(local_x + 2 * halosize) * (local_y + 2 * halosize) * (local_z + 2 * halosize)];
+    uint64_t aux[(local_x + 2 * halosize) * (local_y + 2 * halosize) * (local_z + 2 * halosize)];
     std::memset(grid, 0, sizeof(grid));
     std::memset(aux, 0, sizeof(aux));
-    uint32_t *buffer[2] = {grid, aux};
+    uint64_t *buffer[2] = {grid, aux};
     int ldy = local_y + 2 * halosize;
     int ldz = local_z + 2 * halosize;
     int x_start = halosize, x_end = halosize + local_x;
     int y_start = halosize, y_end = halosize + local_y;
     int z_start = halosize, z_end = halosize + local_z;
     int nt = 2;
-    uint32_t mask16 = ((1 << 16) - 1);
+    uint64_t mask16 = ((1 << 16) - 1);
 
     for (unsigned int round = 0; round < Round; round++) {
         // Sigma
@@ -113,14 +116,15 @@ void HashTensor::f_function() {
             }
         }
         // 7 point stencil, calculate checksum
-        uint32_t *a0, *a1;
+        uint64_t *a0, *a1;
         for(int t = 0; t < nt; ++t) {
             a0 = buffer[t % 2], a1 = buffer[(t + 1) % 2];
             for(int x = x_start; x < x_end; ++x) {
                 for(int y = y_start; y < y_end; ++y) {
                     for(int z = z_start; z < z_end; ++z) {
-                        uint32_t tmp =
-                            a0[index(x - 1, y, z, ldy, ldz)]
+                        uint64_t tmp =
+                            pos * bias
+                            + a0[index(x - 1, y, z, ldy, ldz)]
                             + a0[index(x, y - 1, z, ldy, ldz)]
                             + a0[index(x, y, z - 1, ldy, ldz)]
                             + a0[index(x, y, z, ldy, ldz)]
@@ -220,12 +224,12 @@ void Sansi::add_block(uint64_t *data) { //assume block is 1024 bits long
 
     // update using existing three blocks 
     q.push(hashTensor);
-    if(q.size() == 3) {
-        merge2();
+    if(q.size() == block_group) {
+        merge_n();
     }
 }
 
-void Sansi::merge2() {
+void Sansi::merge_2() {
     HashTensor tensor1 = q.top();
     q.pop();
     HashTensor tensor2 = q.top();
@@ -236,11 +240,15 @@ void Sansi::merge2() {
     q.push(tensor1);
 }
 
+void Sansi::merge_n() {
+    while(q.size() > 1) {
+        merge_2();
+    }
+}
+
 std::string Sansi::hash() {
     static const char dec2hex[16 + 1] = "0123456789abcdef";
-    while(q.size() > 1) {
-        merge2();
-    }
+    merge_n();
     std::string result;
     HashTensor hashTensor = q.top();
     for(int i = 0; i < 20; i++) {

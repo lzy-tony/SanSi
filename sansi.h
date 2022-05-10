@@ -47,11 +47,12 @@ class Sansi {
 private:
     int cnt;
     std::priority_queue <HashTensor> q;
+    void merge_2();
+    void merge_n();
 public:
     Sansi();
     void reset();
     void add_block(uint64_t *data);
-    void merge2();
     std::string hash();
 };
 
