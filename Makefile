@@ -13,4 +13,4 @@ birthday_attack: birthday_attack.cpp sansi.cpp sansi.h
 	g++ birthday_attack.cpp sansi.cpp -o birthday_attack
 
 clean:
-	rm -r main srcgen
+	rm -r main srcgen birthday_attack

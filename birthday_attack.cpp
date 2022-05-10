@@ -6,6 +6,7 @@
 #include <ctime>
 #include <unordered_map>
 #include <string>
+#include <cstring>
 
 using namespace std;
 

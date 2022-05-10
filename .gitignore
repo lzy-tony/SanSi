@@ -31,6 +31,9 @@
 *.out
 *.app
 main
+birthday_attack
+srcgen
+toBin
 
 # IDE
 .vscode
