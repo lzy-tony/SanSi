@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
         int delta = rand() % ((int)maps.length()) + 1;
 
         // msg[0] += delta;
-        for (int i=0;i<msg_len;i+=(rand()%(msg_len-i-1) + 1)) {
+        for (int i = 0; i < msg_len; i += (rand() % (msg_len - i) + 1)) {
             msg[i] += delta;
         }
 

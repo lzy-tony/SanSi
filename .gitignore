@@ -34,6 +34,7 @@ main
 birthday_attack
 srcgen
 toBin
+performance_test
 
 # IDE
 .vscode

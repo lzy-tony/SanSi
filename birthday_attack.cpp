@@ -36,6 +36,9 @@ void outBytes(const void *src, const int length) {
 int main() {
     srand(time(0));
     for (int i=0;i<MAX_TURN;i++) {
+        if(i % 10000 == 0) {
+            cout << "calculating " << i << " th round" << endl;
+        }
         uint64_t *tsrc = genRandBytes();
         Sansi crypto;
         crypto.add_block(tsrc);

@@ -103,13 +103,11 @@ void HashTensor::f_function() {
     static uint64_t aux[(local_x + 2 * halosize) * (local_y + 2 * halosize) * (local_z + 2 * halosize)];
     std::memset(grid, 0, sizeof(grid));
     std::memset(aux, 0, sizeof(aux));
-    uint64_t *buffer[2] = {grid, aux};
     int ldy = local_y + 2 * halosize;
     int ldz = local_z + 2 * halosize;
     int x_start = halosize, x_end = halosize + local_x;
     int y_start = halosize, y_end = halosize + local_y;
     int z_start = halosize, z_end = halosize + local_z;
-    int nt = 2;
     uint64_t mask16 = ((1 << 16) - 1);
 
     for (unsigned int round = 0; round < Round; round++) {
@@ -117,31 +115,29 @@ void HashTensor::f_function() {
         // decompose uint64_t to four 16 bit
         for(int i = 0; i < local_x; i++) {
             for(int j = 0; j < local_y; j++) {
-                buffer[0][index(i + x_start, j + y_start, halosize + 3, ldy, ldz)] = (m_hash[i * local_x + j] & mask16);
-                buffer[0][index(i + x_start, j + y_start, halosize + 2, ldy, ldz)] = ((m_hash[i * local_x + j] >> 16) & mask16);
-                buffer[0][index(i + x_start, j + y_start, halosize + 1, ldy, ldz)] = ((m_hash[i * local_x + j] >> 32) & mask16);
-                buffer[0][index(i + x_start, j + y_start, halosize, ldy, ldz)] = ((m_hash[i * local_x + j] >> 48) & mask16);
+                grid[index(i + x_start, j + y_start, halosize + 3, ldy, ldz)] = (m_hash[i * local_x + j] & mask16);
+                grid[index(i + x_start, j + y_start, halosize + 2, ldy, ldz)] = ((m_hash[i * local_x + j] >> 16) & mask16);
+                grid[index(i + x_start, j + y_start, halosize + 1, ldy, ldz)] = ((m_hash[i * local_x + j] >> 32) & mask16);
+                grid[index(i + x_start, j + y_start, halosize, ldy, ldz)] = ((m_hash[i * local_x + j] >> 48) & mask16);
             }
         }
-        uint64_t *a0, *a1;
-        for(int t = 0; t < nt; ++t) {
-            a0 = buffer[t % 2], a1 = buffer[(t + 1) % 2];
-            for(int x = x_start; x < x_end; ++x) {
-                for(int y = y_start; y < y_end; ++y) {
-                    for(int z = z_start; z < z_end; ++z) {
-                        uint64_t tmp =
-                            pos * bias
-                            + a0[index(x - 1, y, z, ldy, ldz)]
-                            + a0[index(x, y - 1, z, ldy, ldz)]
-                            + a0[index(x, y, z - 1, ldy, ldz)]
-                            + a0[index(x, y, z, ldy, ldz)]
-                            + a0[index(x, y, z + 1, ldy, ldz)]
-                            + a0[index(x, y + 1, z, ldy, ldz)]
-                            + a0[index(x + 1, y, z, ldy, ldz)];
-                        while(tmp > mask16)
-                            tmp = tmp % mask16 + tmp / mask16;
-                        a1[index(x, y, z, ldy, ldz)] = tmp;
-                    }
+        for(int x = x_start; x < x_end; ++x) {
+            for(int y = y_start; y < y_end; ++y) {
+                for(int z = z_start; z < z_end; ++z) {
+                    uint64_t tmp =
+                        pos * bias
+                        + grid[index(x - 1, y, z, ldy, ldz)]
+                        + grid[index(x, y - 1, z, ldy, ldz)]
+                        + grid[index(x, y, z - 1, ldy, ldz)]
+                        + grid[index(x, y, z, ldy, ldz)]
+                        + grid[index(x, y, z + 1, ldy, ldz)]
+                        + grid[index(x, y + 1, z, ldy, ldz)]
+                        + grid[index(x + 1, y, z, ldy, ldz)];
+                    tmp = (tmp & mask16) + (tmp >> 16);
+                    tmp = (tmp & mask16) + (tmp >> 16);
+                    tmp = (tmp & mask16) + (tmp >> 16);
+                    tmp &= mask16;
+                    aux[index(x, y, z, ldy, ldz)] = tmp;
                 }
             }
         }
@@ -149,10 +145,10 @@ void HashTensor::f_function() {
         for(int i = 0; i < local_x; i++) {
             for(int j = 0; j < local_y; j++) {
                 int idx = i * local_y + j;
-                m_hash[idx] = a1[index(i + x_start, j + y_start, halosize + 3, ldy, ldz)], m_hash[idx] <<= 16;
-                m_hash[idx] |= a1[index(i + x_start, j + y_start, halosize + 2, ldy, ldz)], m_hash[idx] <<= 16;
-                m_hash[idx] |= a1[index(i + x_start, j + y_start, halosize + 1, ldy, ldz)], m_hash[idx] <<= 16;
-                m_hash[idx] |= a1[index(i + x_start, j + y_start, halosize, ldy, ldz)];
+                m_hash[idx] = aux[index(i + x_start, j + y_start, halosize + 3, ldy, ldz)], m_hash[idx] <<= 16;
+                m_hash[idx] |= aux[index(i + x_start, j + y_start, halosize + 2, ldy, ldz)], m_hash[idx] <<= 16;
+                m_hash[idx] |= aux[index(i + x_start, j + y_start, halosize + 1, ldy, ldz)], m_hash[idx] <<= 16;
+                m_hash[idx] |= aux[index(i + x_start, j + y_start, halosize, ldy, ldz)];
             }
         }
 
