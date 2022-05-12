@@ -7,7 +7,7 @@
 
 using namespace std;
 
-const int MAX_BLOCKS = 1000000;
+const int MAX_BLOCKS = 10000000;
 
 uint64_t* genRandBytes() {
     uint64_t *ret = new uint64_t[BlockSize];
@@ -22,8 +22,11 @@ uint64_t* genRandBytes() {
 
 int main() {
     uint64_t *tsrc = genRandBytes();
-    int start = clock();
     Sansi crypto;
+    for(int i = 0; i < 2; i++) { // warmup
+        crypto.add_block(tsrc);
+    }
+    int start = clock();
     for(int i = 0; i < MAX_BLOCKS; i++) {
         crypto.add_block(tsrc);
     }
