@@ -25,6 +25,14 @@ uint64_t* genRandBytes() {
     return ret;
 }
 
+uint64_t* genPad() {
+    uint8_t *ptr = new uint8_t[BlockCharSize];
+    memset(ptr, 0, BlockCharSize);
+    ptr[0] = 0x80;
+    ptr[BlockCharSize - 1] = 0x1;
+    return (uint64_t *)ptr;
+}
+
 void outBytes(const void *src, const int length) {
     unsigned char *tmp = (unsigned char *)src;
     for (int i=0;i<length;i++) {
@@ -35,14 +43,17 @@ void outBytes(const void *src, const int length) {
 
 int main() {
     srand(time(0));
+    uint64_t *tpad = genPad();
+    Sansi crypto;
     for (int i=0;i<MAX_TURN;i++) {
-        if(i % 10000 == 0) {
+        if(i % 100000 == 0) {
             cout << "calculating " << i << " th round" << endl;
         }
         uint64_t *tsrc = genRandBytes();
-        Sansi crypto;
         crypto.add_block(tsrc);
+        crypto.add_block(tpad);
         string tret = crypto.hash();
+        crypto.reset();
         if(birth_table.count(tret) && !memcmp(tsrc, birth_table[tret], BlockCharSize)) {
             outBytes(tsrc, BlockCharSize), outBytes(birth_table[tret], BlockCharSize);
             cout << tret << endl;
@@ -50,5 +61,9 @@ int main() {
         }
         birth_table[tret] = tsrc;
     }
+    for (auto pair: birth_table) {
+        delete[] pair.second;
+    }
+    delete[] tpad;
     return 0;
 }

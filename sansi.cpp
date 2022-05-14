@@ -1,21 +1,21 @@
 #include "sansi.h"
 
 #include <iostream>
+#include <fstream>
 #include <cstring>
 
-const int Round = 2;
-const int halosize = 1;
-const int local_x = 5;
-const int local_y = 5;
-const int local_z = 4;
-const int block_group = 8;
+static const int Round = 2;
+static const int halosize = 1;
+static const int local_x = 5;
+static const int local_y = 5;
+static const int local_z = 4;
+static const int block_group = 8;
 
-const uint64_t XorMasks[Round] =
-{
-    0xd76aa478e8c7b756ULL, 0x242070dbc1bdceeeULL
+static const uint64_t XorMasks[Round] = {
+    0x243f6a8885a308d3ULL, 0x13198a2e03707344ULL
 };
 
-const uint64_t bias = 0x0000000000000fafULL;
+static const uint64_t bias = 0xb7e1ULL;
 
 inline uint64_t rotateLeft(uint64_t x, uint8_t numBits) {
     return (x << numBits) | (x >> (64 - numBits));
@@ -50,7 +50,7 @@ void HashTensor::set_ones(uint64_t _pos) {
     for(int i = 0; i < StateSize; i++) {
         m_hash[i] = -1;
     }
-    HashTensor::calc_index();
+    // HashTensor::calc_index();
 }
 
 void HashTensor::set_zeros(uint64_t _pos) {
@@ -58,7 +58,7 @@ void HashTensor::set_zeros(uint64_t _pos) {
     for(int i = 0; i < StateSize; i++) {
         m_hash[i] = 0;
     }
-    HashTensor::calc_index();
+    // HashTensor::calc_index();
 }
 
 void HashTensor::set_pos(uint64_t _pos) {
@@ -73,7 +73,7 @@ void HashTensor::embed(uint64_t *data) {
     for(int i = 0; i < BlockSize; i++) {
         m_hash[i] ^= data[i];
     }
-    calc_index();
+    // calc_index();
 }
 
 uint64_t HashTensor::get_mask() {
@@ -89,11 +89,11 @@ void HashTensor::print() {
     std::cerr << "end print" << std::endl;
 }
 
-unsigned int mod5(uint64_t x) {
+inline unsigned int mod5(uint64_t x) {
     return x % 5;
 }
 
-unsigned int mod64(uint64_t x) {
+inline unsigned int mod64(uint64_t x) {
     return x % 64;
 }
 
@@ -101,8 +101,8 @@ void HashTensor::f_function() {
     // re-compute state
     static uint64_t grid[(local_x + 2 * halosize) * (local_y + 2 * halosize) * (local_z + 2 * halosize)];
     static uint64_t aux[(local_x + 2 * halosize) * (local_y + 2 * halosize) * (local_z + 2 * halosize)];
-    std::memset(grid, 0, sizeof(grid));
-    std::memset(aux, 0, sizeof(aux));
+    memset(grid, 0, sizeof(grid));
+    memset(aux, 0, sizeof(aux));
     int ldy = local_y + 2 * halosize;
     int ldz = local_z + 2 * halosize;
     int x_start = halosize, x_end = halosize + local_x;
@@ -510,6 +510,21 @@ void HashTensor::f_function() {
     }
 }
 
+/* params:
+   data: the data ready to be padded; the buffer should be large enough
+   length: the length of the data (byte)
+
+   returns: the length of the padded data (byte)
+*/
+int Sansi::pad(void *data, int length) {
+    uint8_t *ptr = static_cast<uint8_t *>(data);
+    int pad_size = BlockCharSize - length % BlockCharSize;
+    memset(ptr + length, 0, pad_size);
+    ptr[length] |= 0x80;
+    ptr[length + pad_size - 1] |= 0x1;
+    return length + pad_size;
+}
+
 Sansi::Sansi() {
     cnt = 0;
     while(!q.empty()) {
@@ -532,7 +547,7 @@ void Sansi::add_block(uint64_t *data) { //assume block is 1024 bits long
     hashTensor.f_function();
     hashTensor.calc_index();
 
-    // update using existing three blocks 
+    // update using existing eight blocks 
     q.push(hashTensor);
     if(q.size() == block_group) {
         merge_n();
@@ -566,4 +581,48 @@ std::string Sansi::hash() {
         hashTensor.f_function();
     }
     return result;
+}
+
+std::string Sansi::stringHash(const char *data) {
+    int length = strlen(data);
+    char *buffer = new char[length + BlockCharSize];
+    strcpy(buffer, data);
+    length = pad(buffer, length) >> 3;
+    uint64_t *ptr = (uint64_t *)buffer;
+    for (int i = 0; i < length; i += BlockSize) {
+        add_block(ptr + i);
+    }
+    std::string abstract = hash();
+    reset();
+    delete[] buffer;
+    return abstract;
+}
+
+std::string Sansi::stringHash(std::string data) {
+    return stringHash(data.c_str());
+}
+
+std::string Sansi::fileHash(const char *path) {
+    static const int BlockNum = 1024;
+    std::ifstream in(path, std::ios::in | std::ios::binary);
+    if (!in) {
+        std::cerr << "Error: opening file" << std::endl;
+        return "";
+    }
+    char *buffer = new char[BlockCharSize * BlockNum + 4];
+    uint64_t *ptr = (uint64_t *)buffer;
+    while (in.read(buffer, BlockCharSize * BlockNum)) {
+        for (int i = 0; i < BlockSize * BlockNum; i += BlockSize) {
+            add_block(ptr + i);
+        }
+    }
+    int length = pad(buffer, in.gcount()) >> 3;
+    for (int i = 0; i < length; i += BlockSize) {
+        add_block(ptr + i);
+    }
+    std::string abstract = hash();
+    in.close();
+    reset();
+    delete[] buffer;
+    return abstract;
 }
