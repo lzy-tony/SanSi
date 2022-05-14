@@ -35,6 +35,7 @@ birthday_attack
 srcgen
 toBin
 performance_test
+floyd_cycle
 
 # IDE
 .vscode
@@ -42,3 +43,4 @@ performance_test
 
 # test data
 test/
+calc_pi.py

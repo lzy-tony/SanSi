@@ -1,4 +1,4 @@
-all: main srcgen toBin birthday_attack performance_test
+all: main srcgen toBin birthday_attack performance_test floyd_cycle
 
 main: main.cpp sansi.cpp sansi.h
 	g++ main.cpp sansi.cpp -o main -O3
@@ -15,5 +15,8 @@ birthday_attack: birthday_attack.cpp sansi.cpp sansi.h
 performance_test: performance_test.cpp sansi.cpp sansi.h
 	g++ performance_test.cpp sansi.cpp -o performance_test -O3
 
+floyd_cycle: floyd_cycle.cpp sansi.cpp sansi.h
+	g++ floyd_cycle.cpp sansi.cpp -o floyd_cycle -O3
+
 clean:
-	rm -r main srcgen birthday_attack toBin performance_test
+	rm -r main srcgen birthday_attack toBin performance_test floyd_cycle

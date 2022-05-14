@@ -20,8 +20,17 @@ uint64_t* genRandBytes() {
     return ret;
 }
 
+uint64_t* genPad() {
+    uint8_t *ptr = new uint8_t[BlockCharSize];
+    memset(ptr, 0, BlockCharSize);
+    ptr[0] = 0x80;
+    ptr[BlockCharSize - 1] = 0x1;
+    return (uint64_t *)ptr;
+}
+
 int main() {
     uint64_t *tsrc = genRandBytes();
+    uint64_t *tpad = genPad();
     Sansi crypto;
     for(int i = 0; i < 2; i++) { // warmup
         crypto.add_block(tsrc);
@@ -30,10 +39,12 @@ int main() {
     for(int i = 0; i < MAX_BLOCKS; i++) {
         crypto.add_block(tsrc);
     }
+    crypto.add_block(tpad);
     crypto.hash();
     int end = clock();
     double duration = (double)(end - start) / CLOCKS_PER_SEC;
-    cout << "computation time: " << duration  << " s" << endl;
+    cout << "computation time: " << duration << " s" << endl;
     cout << "performance: " << (double)MAX_BLOCKS * 1024 / duration / 1000000 << " Mbps" << endl;
+    delete[] tsrc, tpad;
     return 0;
 }

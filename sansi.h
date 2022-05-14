@@ -39,7 +39,7 @@ public:
             r.set_hash(i, m_hash[i] ^ t.m_hash[i]);
         }
         r.set_pos((pos + t.pos) >> 1);
-        r.calc_index();
+        // r.calc_index();
         return r;
     }
 };
@@ -51,10 +51,14 @@ private:
     void merge_2();
     void merge_n();
 public:
+    static int pad(void *data, int length);
     Sansi();
     void reset();
     void add_block(uint64_t *data);
     std::string hash();
+    std::string stringHash(const char *data);
+    std::string stringHash(std::string data);
+    std::string fileHash(const char *path);
 };
 
 #endif
