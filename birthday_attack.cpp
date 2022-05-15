@@ -47,7 +47,7 @@ int main() {
     Sansi crypto;
     for (int i=0;i<MAX_TURN;i++) {
         if(i % 100000 == 0) {
-            cout << "calculating " << i << " th round" << endl;
+            cerr << "calculating " << i << " th round (" << float(i) * 100 / MAX_TURN << "%)" << endl;
         }
         uint64_t *tsrc = genRandBytes();
         crypto.add_block(tsrc);
